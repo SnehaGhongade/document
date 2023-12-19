@@ -1,0 +1,53 @@
+pipeline {
+    agent any
+    environment {
+        dotnet = 'C:\\Program Files\\dotnet\\dotnet.exe'
+        sonarscanner='C:\\ProgramData\\Jenkins\\.jenkins\\tools\\hudson.plugins.sonar.MsBuildSQRunnerInstallation\\SonarScannerforMSBuild\\SonarScanner.MSBuild.dll'
+    }
+    stages {
+        stage('Checkout') {
+            steps {
+                // Get some code from a GitHub repository
+                git 'C:\\Repository\\BBMS-API.git'
+            }
+        }
+        stage('Build') {
+            steps {
+                // Building the backend
+                bat 'dotnet build'
+                //bat 'dotnet build --packages ./.nuget/packages'
+                //bat 'dotnet publish -c Release -o out'
+            }
+        }
+        stage('Test') {
+            steps {
+                bat 'dotnet test'
+            }
+        }
+        stage('SonarQube analysis') {
+            steps {
+                withSonarQubeEnv('sonarQube') {
+                    bat 'dotnet sonarscanner begin /k:"BBMS-API" /d:sonar.host.url="http://localhost:9000"  /d:sonar.token="sqp_d3a215fc906ebb15453882ff1eaa9949356b73a1"'
+                    bat 'dotnet build'
+                    bat 'dotnet sonarscanner end /d:sonar.token="sqp_d3a215fc906ebb15453882ff1eaa9949356b73a1"'
+                }
+            }
+        }
+        stage("Quality gate") {
+            steps{
+                waitForQualityGate abortPipeline: true
+            }
+        }
+        stage("Building Image") {
+            steps{
+                bat 'docker build -t shahid231/bbmsapi:v1 .'
+            }
+        }
+        stage("Pushing Image to Docker Hub") {
+            steps{
+                bat 'docker push shahid231/bbmsapi:v1'
+            }
+        }
+    }
+}
+has context menu
